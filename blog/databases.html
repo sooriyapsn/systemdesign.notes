@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Database Decision | System Design Guide</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+    <!-- 
+        Palette: "Electric Future"
+        Primary Blue: #2563EB
+        Vibrant Coral: #F43F5E
+        Deep Slate: #1E293B
+        Electric Cyan: #06B6D4
+    -->
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #1E293B; }
+        
+        /* Chart Container Styling Rules */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px; /* Max width to prevent stretching */
+            height: 400px;    /* Default height */
+            max-height: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Responsive height adjustments */
+        @media (max-width: 640px) {
+            .chart-container {
+                height: 300px;
+            }
+        }
+
+        /* Flowchart Connector Styles (CSS instead of SVG) */
+        .flow-line-vertical {
+            width: 2px;
+            background-color: #CBD5E1;
+            margin: 0 auto;
+        }
+        
+        .flow-line-horizontal {
+            height: 2px;
+            background-color: #CBD5E1;
+            width: 100%;
+        }
+
+        .card-hover {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+    
+    <!-- 
+        Source Material Analysis:
+        The content tracks the decision tree:
+        1. Root: Data Type (Structured, Semistructured, Unstructured)
+        2. Structured -> Use Case (OLTP vs OLAP)
+        3. Semistructured -> Cache, Graph, Doc, Search, Access Pattern (Time, Geo, Wide)
+        4. Unstructured -> Object Store
+        
+        Narrative Plan:
+        - Intro: The Complexity of Choice
+        - Section 1: The Great Divide (Data Types)
+        - Section 2: The Structured Order (SQL World)
+        - Section 3: The Semistructured Jungle (NoSQL Types)
+        - Section 4: The 3D Landscape (Performance comparison)
+    -->
+</head>
+<body class="antialiased">
+
+    <!-- Header / Hero -->
+    <header class="bg-gradient-to-r from-blue-700 to-cyan-600 text-white py-20 px-4 mb-12 shadow-lg">
+        <div class="max-w-6xl mx-auto text-center">
+            <h1 class="text-4xl md:text-6xl font-extrabold mb-4 tracking-tight">The Database Decision</h1>
+            <p class="text-xl md:text-2xl font-light opacity-90 max-w-3xl mx-auto">
+                A visual guide to navigating the system design labyrinth. From ACID compliance to eventual consistency, choose the right tool for the job.
+            </p>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-24 pb-20">
+
+        <!-- SECTION 1: THE GREAT DIVIDE -->
+        <section>
+            <div class="text-center mb-12">
+                <span class="bg-blue-100 text-blue-800 text-sm font-semibold px-3 py-1 rounded-full uppercase tracking-wide">Phase 1</span>
+                <h2 class="text-3xl font-bold mt-4 text-slate-800">What Type of Data Do You Have?</h2>
+                <p class="text-slate-600 max-w-2xl mx-auto mt-4">
+                    The first step in any system design interview or architecture meeting is understanding the nature of your data. Is it rigid like a bank ledger, flexible like a user profile, or massive like a video library?
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                <!-- Text Content -->
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-blue-500 card-hover">
+                        <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <span>📊</span> Structured
+                        </h3>
+                        <p class="text-slate-600 mt-2">Highly organized data with a strict schema. Rows and columns. Think Excel sheets on steroids. Essential for financial records and inventory.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-cyan-500 card-hover">
+                        <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <span>📝</span> Semistructured
+                        </h3>
+                        <p class="text-slate-600 mt-2">Data that contains tags or markers to separate semantic elements but lacks a rigid structure. JSON, XML, emails. The playground of NoSQL.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-rose-500 card-hover">
+                        <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <span>📦</span> Unstructured
+                        </h3>
+                        <p class="text-slate-600 mt-2">Information that either does not have a pre-defined data model or is not organized in a pre-defined manner. Videos, images, audio files.</p>
+                    </div>
+                </div>
+
+                <!-- Visualization: Donut Chart -->
+                <div class="flex flex-col items-center">
+                    <div class="chart-container">
+                        <canvas id="dataTypeChart"></canvas>
+                    </div>
+                    <p class="text-sm text-slate-500 mt-4 italic text-center">
+                        Estimated distribution of data types in modern large-scale applications. Semistructured data dominates due to the flexibility of JSON APIs.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: THE STRUCTURED PATH (OLTP vs OLAP) -->
+        <section class="bg-slate-50 p-8 rounded-3xl border border-slate-200">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                <div class="lg:col-span-5">
+                    <span class="text-blue-600 font-bold uppercase tracking-wider text-sm">Structured Data Path</span>
+                    <h2 class="text-3xl font-bold mt-2 mb-6">Transactions vs. Analytics</h2>
+                    <p class="text-slate-700 mb-6 leading-relaxed">
+                        If your data is structured, the next critical question is the <strong>Use Case</strong>. Are you processing individual sales in real-time, or analyzing years of sales history?
+                    </p>
+                    
+                    <ul class="space-y-4">
+                        <li class="flex items-start">
+                            <span class="text-2xl mr-3">💳</span>
+                            <div>
+                                <strong class="text-slate-900 block">OLTP (Online Transaction Processing)</strong>
+                                <span class="text-slate-600 text-sm">Focused on fast, reliable, row-based operations. Used for day-to-day operations. <em>Example: PostgreSQL, MySQL.</em></span>
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-2xl mr-3">📈</span>
+                            <div>
+                                <strong class="text-slate-900 block">OLAP (Online Analytical Processing)</strong>
+                                <span class="text-slate-600 text-sm">Focused on complex queries, aggregations, and column-based storage. Used for business intelligence. <em>Example: BigQuery, Redshift.</em></span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="lg:col-span-7">
+                    <div class="chart-container">
+                        <canvas id="oltpOlapChart"></canvas>
+                    </div>
+                    <p class="text-center text-xs text-slate-400 mt-2">Comparison of throughput and query latency profiles.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: THE SEMISTRUCTURED MAZE (Visual Decision Tree) -->
+        <section>
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold text-slate-800">The Semistructured Decision Matrix</h2>
+                <p class="text-slate-600 max-w-3xl mx-auto mt-4">
+                    This is where the variety explodes. Depending on your access patterns and data relationships, "NoSQL" splits into many specialized tools.
+                </p>
+            </div>
+
+            <!-- Custom HTML Flowchart Implementation -->
+            <div class="overflow-x-auto pb-8">
+                <div class="min-w-[800px] flex flex-col items-center">
+                    
+                    <!-- Root Node -->
+                    <div class="bg-cyan-600 text-white px-8 py-4 rounded-full shadow-lg font-bold text-lg mb-4 z-10 relative">
+                        Semistructured Data
+                    </div>
+                    
+                    <!-- Vertical Line -->
+                    <div class="h-12 w-1 bg-slate-300"></div>
+
+                    <!-- Branching Horizontal Line -->
+                    <div class="w-[90%] h-1 bg-slate-300 relative">
+                        <!-- Vertical Connectors from Horizontal Line -->
+                        <div class="absolute left-0 top-0 h-8 w-1 bg-slate-300"></div> <!-- Dictionary -->
+                        <div class="absolute left-1/4 top-0 h-8 w-1 bg-slate-300"></div> <!-- Relationships -->
+                        <div class="absolute left-1/2 top-0 h-8 w-1 bg-slate-300 transform -translate-x-1/2"></div> <!-- Nested -->
+                        <div class="absolute left-3/4 top-0 h-8 w-1 bg-slate-300"></div> <!-- Text -->
+                        <div class="absolute right-0 top-0 h-8 w-1 bg-slate-300"></div> <!-- Access Pattern -->
+                    </div>
+
+                    <!-- The 5 Categories Row -->
+                    <div class="grid grid-cols-5 gap-4 w-full mt-8">
+                        
+                        <!-- Col 1: Dictionary Style -->
+                        <div class="flex flex-col items-center">
+                            <div class="bg-white p-4 rounded-lg shadow border-t-4 border-amber-500 text-center w-full min-h-[120px]">
+                                <h4 class="font-bold text-slate-800">Dictionary-Style</h4>
+                                <p class="text-xs text-slate-500 mt-2">Key -> Value</p>
+                            </div>
+                            <div class="h-8 w-1 bg-amber-200"></div>
+                            <div class="bg-amber-50 p-3 rounded text-xs text-center border border-amber-200 w-full">
+                                <span class="block font-bold mb-1">Used as Cache?</span>
+                                <div class="grid grid-cols-2 gap-2 mt-2">
+                                    <div class="bg-white p-2 rounded shadow-sm">
+                                        <span class="block text-green-600 font-bold">Yes</span>
+                                        Redis
+                                    </div>
+                                    <div class="bg-white p-2 rounded shadow-sm">
+                                        <span class="block text-slate-600 font-bold">No</span>
+                                        DynamoDB
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Col 2: Relationships -->
+                        <div class="flex flex-col items-center">
+                            <div class="bg-white p-4 rounded-lg shadow border-t-4 border-purple-500 text-center w-full min-h-[120px]">
+                                <h4 class="font-bold text-slate-800">Relationships</h4>
+                                <p class="text-xs text-slate-500 mt-2">Many-to-Many</p>
+                            </div>
+                            <div class="h-8 w-1 bg-purple-200"></div>
+                            <div class="bg-purple-600 text-white p-3 rounded-lg w-full text-center shadow-md">
+                                <div class="text-2xl mb-1">🕸️</div>
+                                <div class="font-bold">Graph DB</div>
+                                <div class="text-xs opacity-75">Neo4j</div>
+                            </div>
+                        </div>
+
+                        <!-- Col 3: Nested Objects -->
+                        <div class="flex flex-col items-center">
+                            <div class="bg-white p-4 rounded-lg shadow border-t-4 border-green-500 text-center w-full min-h-[120px]">
+                                <h4 class="font-bold text-slate-800">Nested Objects</h4>
+                                <p class="text-xs text-slate-500 mt-2">Documents / JSON</p>
+                            </div>
+                            <div class="h-8 w-1 bg-green-200"></div>
+                            <div class="bg-green-600 text-white p-3 rounded-lg w-full text-center shadow-md">
+                                <div class="text-2xl mb-1">📄</div>
+                                <div class="font-bold">Document DB</div>
+                                <div class="text-xs opacity-75">MongoDB</div>
+                            </div>
+                        </div>
+
+                        <!-- Col 4: Text Search -->
+                        <div class="flex flex-col items-center">
+                            <div class="bg-white p-4 rounded-lg shadow border-t-4 border-blue-500 text-center w-full min-h-[120px]">
+                                <h4 class="font-bold text-slate-800">Text Search</h4>
+                                <p class="text-xs text-slate-500 mt-2">Fuzzy / Full-text</p>
+                            </div>
+                            <div class="h-8 w-1 bg-blue-200"></div>
+                            <div class="bg-blue-600 text-white p-3 rounded-lg w-full text-center shadow-md">
+                                <div class="text-2xl mb-1">🔍</div>
+                                <div class="font-bold">Search Engine</div>
+                                <div class="text-xs opacity-75">ElasticSearch</div>
+                            </div>
+                        </div>
+
+                         <!-- Col 5: Access Patterns -->
+                         <div class="flex flex-col items-center">
+                            <div class="bg-white p-4 rounded-lg shadow border-t-4 border-slate-500 text-center w-full min-h-[120px]">
+                                <h4 class="font-bold text-slate-800">Specialized Access</h4>
+                                <p class="text-xs text-slate-500 mt-2">Time / Space / Scale</p>
+                            </div>
+                            <div class="h-8 w-1 bg-slate-200"></div>
+                            <div class="flex flex-col gap-2 w-full">
+                                <div class="bg-slate-700 text-white p-2 rounded text-center text-xs">
+                                    <span class="text-orange-300">⏱️</span> Time-Series
+                                </div>
+                                <div class="bg-slate-700 text-white p-2 rounded text-center text-xs">
+                                    <span class="text-green-300">🌍</span> Geospatial
+                                </div>
+                                <div class="bg-slate-700 text-white p-2 rounded text-center text-xs">
+                                    <span class="text-purple-300">📚</span> Wide-Column
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: Performance & The 3 Vs (Plotly) -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Latency Chart -->
+            <div>
+                <h3 class="text-2xl font-bold mb-4 text-slate-800">The Speed of Access</h3>
+                <p class="text-slate-600 mb-6">
+                    When choosing between a Cache (In-Memory) and a persistent Key-Value store, speed is the deciding factor. RAM is orders of magnitude faster than Disk.
+                </p>
+                <div class="chart-container">
+                    <canvas id="latencyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 3D Landscape -->
+            <div>
+                <h3 class="text-2xl font-bold mb-4 text-slate-800">The "Big Data" Landscape</h3>
+                <p class="text-slate-600 mb-6">
+                    Visualizing database types based on the 3 Vs: Volume (Storage size), Velocity (Speed of ingestion), and Variety (Complexity of data).
+                </p>
+                <!-- Plotly Container -->
+                <div id="plotly3dDiv" class="w-full bg-white rounded-lg shadow-md border border-slate-200" style="height: 400px;"></div>
+                <p class="text-xs text-slate-400 mt-2 text-center">Interactive 3D Plot - Drag to Rotate</p>
+            </div>
+        </section>
+
+        <!-- SECTION 5: UNSTRUCTURED DATA -->
+        <section class="bg-gradient-to-br from-slate-800 to-slate-900 text-white rounded-3xl p-10 relative overflow-hidden">
+            <!-- Decorative circle -->
+            <div class="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-cyan-500 opacity-10 rounded-full blur-3xl"></div>
+
+            <div class="relative z-10 flex flex-col md:flex-row items-center gap-10">
+                <div class="md:w-1/2">
+                    <h2 class="text-3xl font-bold text-cyan-400 mb-4">The Unstructured Vault</h2>
+                    <p class="text-slate-300 leading-relaxed mb-6">
+                        When data has no structure—video backups, raw log dumps, AI training datasets—you don't need a database engine; you need an <strong>Object Store</strong>.
+                    </p>
+                    <ul class="space-y-3">
+                        <li class="flex items-center text-slate-200">
+                            <span class="bg-cyan-500/20 text-cyan-400 p-2 rounded-lg mr-4 text-xl">🗄️</span>
+                            <span>Stores data as "Objects" (File + Metadata)</span>
+                        </li>
+                        <li class="flex items-center text-slate-200">
+                            <span class="bg-cyan-500/20 text-cyan-400 p-2 rounded-lg mr-4 text-xl">🌐</span>
+                            <span>Accessible via HTTP API (e.g., REST)</span>
+                        </li>
+                        <li class="flex items-center text-slate-200">
+                            <span class="bg-cyan-500/20 text-cyan-400 p-2 rounded-lg mr-4 text-xl">🚀</span>
+                            <span>Infinitely scalable (Petabytes+)</span>
+                        </li>
+                    </ul>
+                    <div class="mt-8">
+                        <span class="font-mono text-cyan-300 bg-cyan-900/50 px-3 py-1 rounded">Example: AWS S3, Google Cloud Storage, MinIO</span>
+                    </div>
+                </div>
+                <div class="md:w-1/2 flex justify-center">
+                    <!-- CSS Art for Object Store bucket representation since SVG is banned -->
+                    <div class="w-48 h-56 bg-slate-700 rounded-t-lg rounded-b-xl border-t-8 border-cyan-500 relative flex flex-col items-center justify-center shadow-2xl">
+                        <div class="absolute top-4 w-32 h-2 bg-slate-600 rounded"></div>
+                        <div class="text-6xl animate-pulse">☁️</div>
+                        <div class="mt-4 text-cyan-400 font-bold tracking-widest">BUCKET</div>
+                        <div class="absolute bottom-4 w-full flex justify-center gap-2">
+                            <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                            <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                            <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CONCLUSION FOOTER -->
+        <footer class="text-center pt-10 border-t border-slate-200">
+            <h3 class="text-2xl font-bold text-slate-800">Choose Wisely</h3>
+            <p class="text-slate-600 max-w-2xl mx-auto mt-2 mb-8">
+                There is no "perfect" database. Every choice is a trade-off between consistency, availability, latency, and complexity.
+            </p>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm max-w-4xl mx-auto">
+                <div class="bg-white p-3 rounded border border-slate-200">
+                    <strong>Relational</strong><br>Postgres
+                </div>
+                <div class="bg-white p-3 rounded border border-slate-200">
+                    <strong>Document</strong><br>MongoDB
+                </div>
+                <div class="bg-white p-3 rounded border border-slate-200">
+                    <strong>Graph</strong><br>Neo4j
+                </div>
+                <div class="bg-white p-3 rounded border border-slate-200">
+                    <strong>Time-Series</strong><br>InfluxDB
+                </div>
+            </div>
+        </footer>
+
+    </main>
+
+    <!-- CHART LOGIC -->
+    <script>
+        // Shared Config for Tooltips (Label Wrapping Handling)
+        const tooltipConfig = {
+            callbacks: {
+                title: function(tooltipItems) {
+                    const item = tooltipItems[0];
+                    let label = item.chart.data.labels[item.dataIndex];
+                    if (Array.isArray(label)) {
+                        return label.join(' ');
+                    } else {
+                        return label;
+                    }
+                }
+            }
+        };
+
+        // Utility: Label Splitting Function for 16-char limit
+        function processLabels(labels) {
+            return labels.map(label => {
+                if (label.length > 16) {
+                    const words = label.split(' ');
+                    const lines = [];
+                    let currentLine = words[0];
+                    for (let i = 1; i < words.length; i++) {
+                        if ((currentLine + " " + words[i]).length <= 16) {
+                            currentLine += " " + words[i];
+                        } else {
+                            lines.push(currentLine);
+                            currentLine = words[i];
+                        }
+                    }
+                    lines.push(currentLine);
+                    return lines;
+                }
+                return label;
+            });
+        }
+
+        // --- CHART 1: Data Type Donut (Chart.js) ---
+        const ctxData = document.getElementById('dataTypeChart').getContext('2d');
+        const dataLabels = ['Semistructured (JSON/Logs)', 'Structured (Relational)', 'Unstructured (Media)'];
+        new Chart(ctxData, {
+            type: 'doughnut',
+            data: {
+                labels: processLabels(dataLabels),
+                datasets: [{
+                    data: [65, 20, 15],
+                    backgroundColor: ['#06B6D4', '#2563EB', '#F43F5E'],
+                    borderWidth: 0,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: tooltipConfig,
+                    title: { display: true, text: 'Enterprise Data Composition' }
+                }
+            }
+        });
+
+        // --- CHART 2: OLTP vs OLAP (Grouped Bar - Chart.js) ---
+        const ctxOltp = document.getElementById('oltpOlapChart').getContext('2d');
+        const oltpLabels = ['Write Speed (Single Row)', 'Read Complexity', 'Storage Cost', 'Consistency'];
+        new Chart(ctxOltp, {
+            type: 'bar',
+            data: {
+                labels: processLabels(oltpLabels),
+                datasets: [
+                    {
+                        label: 'OLTP (Postgres)',
+                        data: [90, 30, 80, 95], // Normalized scores 0-100
+                        backgroundColor: '#2563EB'
+                    },
+                    {
+                        label: 'OLAP (BigQuery)',
+                        data: [40, 95, 40, 60],
+                        backgroundColor: '#F43F5E'
+                    }
+                ]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, max: 100, title: {display: true, text: 'Performance Index'} }
+                },
+                plugins: {
+                    tooltip: tooltipConfig
+                }
+            }
+        });
+
+        // --- CHART 3: Latency Comparison (Horizontal Bar - Chart.js) ---
+        const ctxLat = document.getElementById('latencyChart').getContext('2d');
+        const latLabels = ['L1 Cache', 'In-Memory DB (Redis)', 'SSD DB (MongoDB)', 'HDD DB (Legacy)'];
+        new Chart(ctxLat, {
+            type: 'bar',
+            indexAxis: 'y',
+            data: {
+                labels: processLabels(latLabels),
+                datasets: [{
+                    label: 'Access Time (Log Scale - Lower is Better)',
+                    data: [1, 10, 500, 5000], // Hypothetical relative units
+                    backgroundColor: ['#F59E0B', '#F59E0B', '#94A3B8', '#64748B']
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    x: { type: 'logarithmic', title: {display: true, text: 'Relative Latency Units'} }
+                },
+                plugins: {
+                    tooltip: tooltipConfig,
+                    legend: { display: false }
+                }
+            }
+        });
+
+        // --- CHART 4: The 3 Vs (Plotly.js 3D Scatter - WebGL) ---
+        // Ensuring WebGL usage
+        const trace3d = {
+            x: [80, 20, 90, 40, 60], // Volume
+            y: [90, 80, 50, 20, 60], // Velocity
+            z: [20, 40, 80, 90, 50], // Variety
+            mode: 'markers+text',
+            marker: {
+                size: 12,
+                color: ['#06B6D4', '#2563EB', '#F43F5E', '#F59E0B', '#8B5CF6'],
+                opacity: 0.8
+            },
+            type: 'scatter3d', // Plotly uses WebGL for 3D
+            text: ['Cassandra', 'Redis', 'Hadoop', 'Neo4j', 'MongoDB'],
+            textposition: 'top center'
+        };
+
+        const layout3d = {
+            margin: {l: 0, r: 0, b: 0, t: 0},
+            scene: {
+                xaxis: {title: 'Volume (Size)'},
+                yaxis: {title: 'Velocity (Speed)'},
+                zaxis: {title: 'Variety (Complex)'}
+            }
+        };
+
+        Plotly.newPlot('plotly3dDiv', [trace3d], layout3d, {responsive: true});
+
+    </script>
+</body>
+</html>
