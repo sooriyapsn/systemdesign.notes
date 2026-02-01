@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apache Kafka Architecture Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom styles for specific interactive elements not covered by Tailwind utilities */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 320px;
+            max-height: 400px;
+        }
+        
+        .node-transition {
+            transition: all 0.5s ease-in-out;:q
+            
+        }
+
+        .message-anim {
+            animation: flow 1s linear forwards;
+        }
+
+        @keyframes flow {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(100px); opacity: 0; }
+        }
+        
+        /* Hide scrollbar for clean UI */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+    <!-- Chosen Palette: Warm Neutral Tech (Stone/Amber) -->
+    <!-- Application Structure Plan: 
+         1. Dashboard Layout: A central hub with tabbed navigation to separate complex topics into digestible interactive modules.
+         2. Module 1: Cluster Simulator (Architecture): Allows users to "see" the concepts of Brokers, Partitions, and Leadership in action. Users can kill brokers to understand HA.
+         3. Module 2: Data Lifecycle (Concepts): Interactive charts comparing Retention vs. Compaction to clarify the study guide's distinction.
+         4. Module 3: Production Scenarios (Application): A "Troubleshooter" mode where users diagnose issues based on the study guide's scenarios (Lag, Broker Failure).
+         5. Rationale: This structure moves from "Theory" (Concepts) to "Mechanics" (Simulator) to "Practice" (Scenarios), mirroring the learning curve.
+    -->
+    <!-- Visualization & Content Choices:
+         1. Cluster Simulator: HTML/CSS Grid with JS state. Goal: Visualize Leadership/Replication. Method: DOM manipulation of classes (red for dead broker, crown icon for leader). No SVG.
+         2. Logic Flow: Flowcharts built with CSS Flexbox arrows and nodes. Goal: Show KRaft vs ZK structure.
+         3. Lag Chart: Chart.js Line Chart. Goal: Visualize Scenario 3 (Lag Spiking). Interaction: Toggle "Spike" to see lines diverge.
+         4. Compaction Chart: Chart.js Bar Chart. Goal: Visualize Log Compaction. Method: Stacked bars showing "Old" vs "Kept" keys.
+         5. Confirmation: NO SVG graphics used. NO Mermaid JS used.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="bg-stone-50 text-stone-800 font-sans min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-stone-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-amber-600 rounded flex items-center justify-center text-white font-bold">K</div>
+                <h1 class="text-xl font-bold tracking-tight text-stone-900">Kafka Architecture Explorer</h1>
+            </div>
+            <div class="hidden md:flex text-sm text-stone-500 gap-4">
+                <span>Based on Study Guide 001</span>
+                <span>•</span>
+                <span>Interactive Learning</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Navigation -->
+    <nav class="bg-stone-100 border-b border-stone-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex space-x-8 overflow-x-auto no-scrollbar" id="mainNav">
+                <button onclick="switchTab('simulator')" class="nav-btn border-amber-600 text-amber-700 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" data-tab="simulator">
+                    Cluster Simulator
+                </button>
+                <button onclick="switchTab('concepts')" class="nav-btn border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" data-tab="concepts">
+                    Core Concepts & Lifecycle
+                </button>
+                <button onclick="switchTab('scenarios')" class="nav-btn border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors" data-tab="scenarios">
+                    Production Scenarios
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+
+        <!-- TAB 1: CLUSTER SIMULATOR -->
+        <section id="simulator" class="tab-content block space-y-8">
+            <div class="bg-white rounded-lg shadow-sm border border-stone-200 p-6">
+                <h2 class="text-2xl font-bold text-stone-900 mb-2">Cluster High Availability Lab</h2>
+                <p class="text-stone-600 mb-6 max-w-3xl">
+                    Interact with a live Kafka cluster simulation. Understand <strong>Brokers</strong>, <strong>Partition Leadership</strong>, and <strong>Replication</strong>. 
+                    Experiment with fault tolerance by taking brokers offline.
+                </p>
+
+                <!-- Control Panel -->
+                <div class="flex flex-wrap gap-4 mb-8 bg-stone-50 p-4 rounded-lg border border-stone-100">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-semibold text-stone-700">Metadata Mode:</span>
+                        <div class="flex bg-white rounded border border-stone-300 p-1">
+                            <button onclick="setMetadataMode('zk')" id="btn-zk" class="px-3 py-1 text-xs rounded font-medium bg-amber-100 text-amber-800">ZooKeeper</button>
+                            <button onclick="setMetadataMode('kraft')" id="btn-kraft" class="px-3 py-1 text-xs rounded font-medium text-stone-600 hover:bg-stone-100">KRaft</button>
+                        </div>
+                    </div>
+                    <div class="h-6 w-px bg-stone-300 mx-2 hidden sm:block"></div>
+                    <button onclick="simulateWrite()" class="px-4 py-2 bg-stone-900 text-white text-sm font-medium rounded hover:bg-stone-800 transition shadow-sm flex items-center gap-2">
+                        <span>📤</span> Send Message
+                    </button>
+                    <button onclick="resetCluster()" class="px-4 py-2 bg-white border border-stone-300 text-stone-700 text-sm font-medium rounded hover:bg-stone-50 transition ml-auto">
+                        Reset Cluster
+                    </button>
+                </div>
+
+                <!-- Simulation Visualizer -->
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    
+                    <!-- Metadata Controller (Left Column) -->
+                    <div class="lg:col-span-1 flex flex-col items-center justify-center p-4 border-2 border-dashed border-stone-300 rounded-xl bg-stone-50/50 transition-all" id="metadata-container">
+                        <div id="zk-node" class="text-center">
+                            <div class="w-16 h-16 bg-green-700 text-white rounded-lg flex items-center justify-center text-2xl shadow-lg mb-2 mx-auto">🐘</div>
+                            <h3 class="font-bold text-stone-700">ZooKeeper</h3>
+                            <p class="text-xs text-stone-500 mt-1">External Coordinator<br>Managing Metadata</p>
+                        </div>
+                        <div id="kraft-node" class="hidden text-center">
+                            <div class="w-16 h-16 bg-amber-600 text-white rounded-full flex items-center justify-center text-2xl shadow-lg mb-2 mx-auto">🚤</div>
+                            <h3 class="font-bold text-stone-700">KRaft Controller</h3>
+                            <p class="text-xs text-stone-500 mt-1">Internal Consensus<br>Self-Managed</p>
+                        </div>
+                    </div>
+
+                    <!-- Cluster Nodes (Right 3 Columns) -->
+                    <div class="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Broker 1 -->
+                        <div id="broker-1" class="broker-card relative bg-white border-2 border-stone-200 rounded-xl p-4 shadow-sm node-transition hover:border-amber-200">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <div class="text-xs font-bold text-stone-400 uppercase tracking-wide">Broker 101</div>
+                                    <div class="text-sm text-stone-500 broker-status">Online</div>
+                                </div>
+                                <button onclick="toggleBroker(1)" class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200 transition">Kill</button>
+                            </div>
+                            <!-- Partitions -->
+                            <div class="space-y-2">
+                                <div id="p0-r1" class="partition p-3 bg-amber-50 border border-amber-200 rounded flex justify-between items-center transition-colors">
+                                    <span class="text-xs font-mono font-bold text-amber-800">Topic-A [P0]</span>
+                                    <span class="role-badge text-[10px] uppercase font-bold bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded">Leader 👑</span>
+                                </div>
+                                <div id="p1-r1" class="partition p-3 bg-stone-50 border border-stone-200 rounded flex justify-between items-center opacity-60">
+                                    <span class="text-xs font-mono font-bold text-stone-600">Topic-A [P1]</span>
+                                    <span class="role-badge text-[10px] uppercase font-bold bg-stone-200 text-stone-600 px-1.5 py-0.5 rounded">Follower</span>
+                                </div>
+                            </div>
+                            <div class="mt-4 h-1 w-full bg-stone-100 rounded overflow-hidden">
+                                <div class="disk-io h-full bg-blue-500 w-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+
+                        <!-- Broker 2 -->
+                        <div id="broker-2" class="broker-card relative bg-white border-2 border-stone-200 rounded-xl p-4 shadow-sm node-transition hover:border-amber-200">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <div class="text-xs font-bold text-stone-400 uppercase tracking-wide">Broker 102</div>
+                                    <div class="text-sm text-stone-500 broker-status">Online</div>
+                                </div>
+                                <button onclick="toggleBroker(2)" class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200 transition">Kill</button>
+                            </div>
+                            <!-- Partitions -->
+                            <div class="space-y-2">
+                                <div id="p0-r2" class="partition p-3 bg-stone-50 border border-stone-200 rounded flex justify-between items-center opacity-60">
+                                    <span class="text-xs font-mono font-bold text-stone-600">Topic-A [P0]</span>
+                                    <span class="role-badge text-[10px] uppercase font-bold bg-stone-200 text-stone-600 px-1.5 py-0.5 rounded">Follower</span>
+                                </div>
+                                <div id="p1-r2" class="partition p-3 bg-amber-50 border border-amber-200 rounded flex justify-between items-center transition-colors">
+                                    <span class="text-xs font-mono font-bold text-amber-800">Topic-A [P1]</span>
+                                    <span class="role-badge text-[10px] uppercase font-bold bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded">Leader 👑</span>
+                                </div>
+                            </div>
+                            <div class="mt-4 h-1 w-full bg-stone-100 rounded overflow-hidden">
+                                <div class="disk-io h-full bg-blue-500 w-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+
+                        <!-- Broker 3 -->
+                        <div id="broker-3" class="broker-card relative bg-white border-2 border-stone-200 rounded-xl p-4 shadow-sm node-transition hover:border-amber-200">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <div class="text-xs font-bold text-stone-400 uppercase tracking-wide">Broker 103</div>
+                                    <div class="text-sm text-stone-500 broker-status">Online</div>
+                                </div>
+                                <button onclick="toggleBroker(3)" class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200 transition">Kill</button>
+                            </div>
+                            <!-- Partitions -->
+                            <div class="space-y-2">
+                                <div id="p0-r3" class="partition p-3 bg-stone-50 border border-stone-200 rounded flex justify-between items-center opacity-60">
+                                    <span class="text-xs font-mono font-bold text-stone-600">Topic-A [P0]</span>
+                                    <span class="role-badge text-[10px] uppercase font-bold bg-stone-200 text-stone-600 px-1.5 py-0.5 rounded">Follower</span>
+                                </div>
+                                <div id="p1-r3" class="partition p-3 bg-stone-50 border border-stone-200 rounded flex justify-between items-center opacity-60">
+                                    <span class="text-xs font-mono font-bold text-stone-600">Topic-A [P1]</span>
+                                    <span class="role-badge text-[10px] uppercase font-bold bg-stone-200 text-stone-600 px-1.5 py-0.5 rounded">Follower</span>
+                                </div>
+                            </div>
+                            <div class="mt-4 h-1 w-full bg-stone-100 rounded overflow-hidden">
+                                <div class="disk-io h-full bg-blue-500 w-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Simulation Info Logs -->
+                <div class="mt-6 p-4 bg-stone-900 text-stone-300 font-mono text-sm rounded-lg h-32 overflow-y-auto" id="sim-console">
+                    <div class="text-green-400">> Cluster Initialized.</div>
+                    <div>> 3 Brokers online.</div>
+                    <div>> ZooKeeper quorum active.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: CORE CONCEPTS -->
+        <section id="concepts" class="tab-content hidden space-y-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- Concept 1: Retention vs Compaction -->
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-stone-200">
+                    <h3 class="text-lg font-bold text-stone-900 mb-2">Data Lifecycle: Retention vs. Compaction</h3>
+                    <p class="text-sm text-stone-600 mb-4">
+                        Understanding how Kafka cleans up data is critical. 
+                        <strong>Retention</strong> deletes by time/size. 
+                        <strong>Compaction</strong> keeps the <em>latest</em> value for each key.
+                    </p>
+                    <div class="flex gap-4 mb-4">
+                        <button onclick="updateCompactionChart('retention')" class="text-xs px-3 py-1 bg-stone-200 hover:bg-stone-300 rounded font-medium">Simulate Retention (7 Days)</button>
+                        <button onclick="updateCompactionChart('compaction')" class="text-xs px-3 py-1 bg-amber-100 text-amber-800 hover:bg-amber-200 rounded font-medium">Simulate Log Compaction</button>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="compactionChart"></canvas>
+                    </div>
+                    <div class="mt-4 p-3 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100" id="compaction-desc">
+                        Select a mode above to see how storage behaves over time.
+                    </div>
+                </div>
+
+                <!-- Concept 2: Vocabulary Cards -->
+                <div class="space-y-4">
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-stone-200">
+                        <h3 class="text-lg font-bold text-stone-900 mb-4">Key Vocabulary Reference</h3>
+                        <div class="space-y-3">
+                            <details class="group">
+                                <summary class="flex justify-between items-center font-medium cursor-pointer list-none text-stone-700 hover:text-amber-600">
+                                    <span>Offset</span>
+                                    <span class="transition group-open:rotate-180">
+                                        <svg fill="none" height="24" shape-rendering="geometricPrecision" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
+                                    </span>
+                                </summary>
+                                <p class="text-stone-600 text-sm mt-2 pl-4 border-l-2 border-stone-100">
+                                    A unique integer ID assigned to every message in a partition. It is immutable and strictly increasing. Consumers use offsets to "bookmark" their progress.
+                                </p>
+                            </details>
+                            <details class="group">
+                                <summary class="flex justify-between items-center font-medium cursor-pointer list-none text-stone-700 hover:text-amber-600">
+                                    <span>ISR (In-Sync Replicas)</span>
+                                    <span class="transition group-open:rotate-180">
+                                        <svg fill="none" height="24" shape-rendering="geometricPrecision" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
+                                    </span>
+                                </summary>
+                                <p class="text-stone-600 text-sm mt-2 pl-4 border-l-2 border-stone-100">
+                                    The subset of replicas that are fully caught up with the leader. Only members of the ISR are eligible to become the new Leader if the current one fails.
+                                </p>
+                            </details>
+                            <details class="group">
+                                <summary class="flex justify-between items-center font-medium cursor-pointer list-none text-stone-700 hover:text-amber-600">
+                                    <span>Consumer Group</span>
+                                    <span class="transition group-open:rotate-180">
+                                        <svg fill="none" height="24" shape-rendering="geometricPrecision" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
+                                    </span>
+                                </summary>
+                                <p class="text-stone-600 text-sm mt-2 pl-4 border-l-2 border-stone-100">
+                                    A set of consumers that cooperate to consume data from a topic. Kafka ensures that each partition is consumed by exactly one member of the group at a time.
+                                </p>
+                            </details>
+                        </div>
+                    </div>
+
+                    <!-- Topic vs Partition Visualizer -->
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-stone-200">
+                         <h3 class="text-lg font-bold text-stone-900 mb-2">Topic vs. Partition</h3>
+                         <div class="flex items-center justify-center gap-4 mt-6">
+                            <div class="text-center">
+                                <div class="w-32 h-16 border-2 border-stone-400 rounded-lg flex items-center justify-center bg-stone-50 font-bold text-stone-600">Topic: "Logs"</div>
+                                <div class="text-xs text-stone-500 mt-1">Logical Name</div>
+                            </div>
+                            <div class="text-2xl text-stone-300">→</div>
+                            <div class="flex flex-col gap-2">
+                                <div class="w-24 h-8 bg-amber-100 border border-amber-300 rounded flex items-center justify-center text-xs font-mono text-amber-800">Partition 0</div>
+                                <div class="w-24 h-8 bg-amber-100 border border-amber-300 rounded flex items-center justify-center text-xs font-mono text-amber-800">Partition 1</div>
+                                <div class="w-24 h-8 bg-amber-100 border border-amber-300 rounded flex items-center justify-center text-xs font-mono text-amber-800">Partition 2</div>
+                            </div>
+                         </div>
+                         <p class="text-center text-xs text-stone-500 mt-4">The Topic is the category. The Partition is the unit of parallelism.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: SCENARIOS -->
+        <section id="scenarios" class="tab-content hidden space-y-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- Scenario 1: Troubleshooting Lag -->
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-stone-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-stone-900">Scenario: Consumer Lag Spike</h3>
+                        <span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded font-bold">Production Issue</span>
+                    </div>
+                    <p class="text-sm text-stone-600 mb-4">
+                        <strong>Context:</strong> A producer is sending 5000 msg/sec. Your consumer group is only processing 3000 msg/sec. Latency is increasing.
+                    </p>
+                    
+                    <div class="chart-container mb-4">
+                        <canvas id="lagChart"></canvas>
+                    </div>
+
+                    <div class="bg-stone-50 p-4 rounded border border-stone-200">
+                        <label class="block text-xs font-bold text-stone-500 uppercase mb-2">Diagnosis Action</label>
+                        <select id="lag-action" onchange="resolveLagScenario()" class="w-full text-sm border-stone-300 rounded shadow-sm focus:border-amber-500 focus:ring focus:ring-amber-200 focus:ring-opacity-50 p-2">
+                            <option value="none">-- Select a Fix --</option>
+                            <option value="restart">Restart Consumers</option>
+                            <option value="add_consumer">Add Consumer Instance (Total: 4)</option>
+                            <option value="add_partition">Increase Partitions & Consumers</option>
+                        </select>
+                        <div id="lag-feedback" class="mt-3 text-sm p-2 rounded hidden"></div>
+                    </div>
+                </div>
+
+                <!-- Scenario 2: Use Cases -->
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-stone-200">
+                        <h3 class="text-lg font-bold text-stone-900 mb-2">Use Case: User Activity Tracking</h3>
+                        <p class="text-sm text-stone-600 mb-4">
+                            <strong>Requirement:</strong> Track 10M users' clicks. Order matters per user.
+                        </p>
+                        <ul class="text-sm space-y-2">
+                            <li class="flex items-start gap-2">
+                                <span class="text-green-600 font-bold">✓</span>
+                                <span><strong>High Partition Count:</strong> Necessary for throughput.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-green-600 font-bold">✓</span>
+                                <span><strong>Key = user_id:</strong> Ensures all clicks for User A land in the same partition, guaranteeing order.</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-stone-200">
+                        <h3 class="text-lg font-bold text-stone-900 mb-2">Use Case: Fraud Detection</h3>
+                        <p class="text-sm text-stone-600 mb-4">
+                            <strong>Requirement:</strong> Real-time analysis. Low latency is key.
+                        </p>
+                         <ul class="text-sm space-y-2">
+                            <li class="flex items-start gap-2">
+                                <span class="text-green-600 font-bold">✓</span>
+                                <span><strong>Stream Processing:</strong> Use Kafka Streams or Flink.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-green-600 font-bold">✓</span>
+                                <span><strong>Acks Configuration:</strong> Use <code>acks=1</code> for speed if some loss is acceptable, or <code>acks=all</code> for critical financial data.</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-stone-100 border-t border-stone-200 py-8 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center text-stone-500 text-sm">
+            <p>Generated for Kafka Interview Preparation.</p>
+            <p class="mt-1">Interactive Learning Module v1.0</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- Navigation Logic ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+            document.getElementById(tabId).classList.add('block');
+            
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('border-amber-600', 'text-amber-700');
+                btn.classList.add('border-transparent', 'text-stone-500');
+            });
+            const activeBtn = document.querySelector(`button[data-tab="${tabId}"]`);
+            activeBtn.classList.remove('border-transparent', 'text-stone-500');
+            activeBtn.classList.add('border-amber-600', 'text-amber-700');
+
+            // Resize charts if tab is shown
+            if (tabId === 'concepts' && compactionChart) compactionChart.resize();
+            if (tabId === 'scenarios' && lagChart) lagChart.resize();
+        }
+
+        // --- Simulator Logic ---
+        const brokers = {
+            1: { status: 'online', partitions: [{id: 'P0', role: 'leader'}, {id: 'P1', role: 'follower'}] },
+            2: { status: 'online', partitions: [{id: 'P0', role: 'follower'}, {id: 'P1', role: 'leader'}] },
+            3: { status: 'online', partitions: [{id: 'P0', role: 'follower'}, {id: 'P1', role: 'follower'}] }
+        };
+
+        let mode = 'zk';
+
+        function logConsole(msg) {
+            const console = document.getElementById('sim-console');
+            const div = document.createElement('div');
+            div.textContent = `> ${msg}`;
+            console.prepend(div); // Add to top
+        }
+
+        function setMetadataMode(newMode) {
+            mode = newMode;
+            document.getElementById('btn-zk').className = newMode === 'zk' 
+                ? "px-3 py-1 text-xs rounded font-medium bg-amber-100 text-amber-800" 
+                : "px-3 py-1 text-xs rounded font-medium text-stone-600 hover:bg-stone-100";
+            document.getElementById('btn-kraft').className = newMode === 'kraft'
+                ? "px-3 py-1 text-xs rounded font-medium bg-amber-100 text-amber-800"
+                : "px-3 py-1 text-xs rounded font-medium text-stone-600 hover:bg-stone-100";
+
+            if(newMode === 'zk') {
+                document.getElementById('zk-node').classList.remove('hidden');
+                document.getElementById('kraft-node').classList.add('hidden');
+                logConsole('Switched to ZooKeeper mode. Controller logic external.');
+            } else {
+                document.getElementById('zk-node').classList.add('hidden');
+                document.getElementById('kraft-node').classList.remove('hidden');
+                logConsole('Switched to KRaft mode. Controller logic embedded in brokers.');
+            }
+        }
+
+        function updateBrokerUI(id) {
+            const b = brokers[id];
+            const el = document.getElementById(`broker-${id}`);
+            const statusEl = el.querySelector('.broker-status');
+            const btn = el.querySelector('button');
+            
+            if (b.status === 'dead') {
+                el.classList.add('bg-red-50', 'border-red-200');
+                el.classList.remove('bg-white', 'border-stone-200');
+                statusEl.textContent = 'OFFLINE';
+                statusEl.classList.add('text-red-600');
+                btn.textContent = 'Revive';
+                btn.className = "text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200 transition";
+            } else {
+                el.classList.remove('bg-red-50', 'border-red-200');
+                el.classList.add('bg-white', 'border-stone-200');
+                statusEl.textContent = 'Online';
+                statusEl.classList.remove('text-red-600');
+                btn.textContent = 'Kill';
+                btn.className = "text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200 transition";
+            }
+
+            // Update Partition UI inside broker
+            b.partitions.forEach(p => {
+                const pEl = document.getElementById(`p${p.id === 'P0' ? '0' : '1'}-r${id}`);
+                const badge = pEl.querySelector('.role-badge');
+                
+                if (b.status === 'dead') {
+                    pEl.classList.add('opacity-30', 'grayscale');
+                    pEl.classList.remove('bg-amber-50', 'border-amber-200');
+                } else {
+                    pEl.classList.remove('opacity-30', 'grayscale');
+                    if(p.role === 'leader') {
+                        pEl.classList.add('bg-amber-50', 'border-amber-200');
+                        pEl.classList.remove('opacity-60', 'bg-stone-50', 'border-stone-200');
+                        badge.textContent = "Leader 👑";
+                        badge.className = "role-badge text-[10px] uppercase font-bold bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded";
+                    } else {
+                        pEl.classList.add('opacity-60', 'bg-stone-50', 'border-stone-200');
+                        pEl.classList.remove('bg-amber-50', 'border-amber-200');
+                        badge.textContent = "Follower";
+                        badge.className = "role-badge text-[10px] uppercase font-bold bg-stone-200 text-stone-600 px-1.5 py-0.5 rounded";
+                    }
+                }
+            });
+        }
+
+        function toggleBroker(id) {
+            const b = brokers[id];
+            if (b.status === 'online') {
+                b.status = 'dead';
+                logConsole(`Broker ${id} crashed!`);
+                triggerElection(id);
+            } else {
+                b.status = 'online';
+                logConsole(`Broker ${id} recovered.`);
+                // Return as follower
+                b.partitions.forEach(p => p.role = 'follower');
+            }
+            updateBrokerUI(id);
+        }
+
+        function triggerElection(deadBrokerId) {
+            // Find partitions where deadBroker was leader
+            brokers[deadBrokerId].partitions.forEach(p => {
+                if (p.role === 'leader') {
+                    logConsole(`Partition ${p.id} needs new leader...`);
+                    // Find a survivor
+                    let foundNewLeader = false;
+                    [1, 2, 3].forEach(bId => {
+                        if (bId !== deadBrokerId && brokers[bId].status === 'online' && !foundNewLeader) {
+                            // Promote this broker for this partition
+                            const partitionRef = brokers[bId].partitions.find(bp => bp.id === p.id);
+                            if(partitionRef) {
+                                partitionRef.role = 'leader';
+                                foundNewLeader = true;
+                                logConsole(`Broker ${bId} elected leader for ${p.id}`);
+                                updateBrokerUI(bId);
+                            }
+                        }
+                    });
+                    if (!foundNewLeader) logConsole(`CRITICAL: No ISR available for ${p.id}! Data unavailable.`);
+                }
+            });
+        }
+
+        function simulateWrite() {
+            logConsole("Producer sending message...");
+            // Animate IO bars
+            [1, 2, 3].forEach(id => {
+                if (brokers[id].status === 'online') {
+                    const bar = document.querySelector(`#broker-${id} .disk-io`);
+                    bar.classList.remove('w-0');
+                    bar.classList.add('w-full');
+                    setTimeout(() => {
+                        bar.classList.remove('w-full');
+                        bar.classList.add('w-0');
+                    }, 300);
+                }
+            });
+        }
+
+        function resetCluster() {
+            brokers[1] = { status: 'online', partitions: [{id: 'P0', role: 'leader'}, {id: 'P1', role: 'follower'}] };
+            brokers[2] = { status: 'online', partitions: [{id: 'P0', role: 'follower'}, {id: 'P1', role: 'leader'}] };
+            brokers[3] = { status: 'online', partitions: [{id: 'P0', role: 'follower'}, {id: 'P1', role: 'follower'}] };
+            updateBrokerUI(1);
+            updateBrokerUI(2);
+            updateBrokerUI(3);
+            logConsole("Cluster reset to initial state.");
+        }
+
+        // --- Concept Charts (Chart.js) ---
+        let compactionChart;
+        function initCompactionChart() {
+            const ctx = document.getElementById('compactionChart').getContext('2d');
+            compactionChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5'],
+                    datasets: [
+                        {
+                            label: 'Stored Data (GB)',
+                            data: [10, 20, 30, 40, 50],
+                            backgroundColor: '#d97706',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y + ' GB';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Disk Usage (GB)' } }
+                    }
+                }
+            });
+        }
+
+        function updateCompactionChart(type) {
+            const desc = document.getElementById('compaction-desc');
+            if (type === 'retention') {
+                // Retention accumulates then drops off
+                compactionChart.data.datasets[0].data = [10, 20, 30, 40, 50]; // Linear growth
+                compactionChart.data.datasets[0].label = "Total Log Size (Retention Policy)";
+                compactionChart.update();
+                desc.textContent = "Standard Retention: Data grows until the retention period (e.g., 7 days) hits, then old segments are deleted completely.";
+                desc.className = "mt-4 p-3 bg-stone-100 text-stone-800 text-xs rounded border border-stone-200";
+            } else {
+                // Compaction grows slower
+                compactionChart.data.datasets[0].data = [10, 12, 14, 15, 16]; // Slow growth
+                compactionChart.data.datasets[0].label = "Total Log Size (Log Compaction)";
+                compactionChart.update();
+                desc.textContent = "Log Compaction: Old values for the same key are discarded. Only the latest state is kept. Ideal for 'current state' data.";
+                desc.className = "mt-4 p-3 bg-amber-50 text-amber-800 text-xs rounded border border-amber-200";
+            }
+        }
+
+        // --- Scenario Charts ---
+        let lagChart;
+        function initLagChart() {
+            const ctx = document.getElementById('lagChart').getContext('2d');
+            lagChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['10:00', '10:05', '10:10', '10:15', '10:20', '10:25', '10:30'],
+                    datasets: [
+                        {
+                            label: 'Production Rate (msg/s)',
+                            data: [2000, 2000, 2000, 5000, 5000, 5000, 5000],
+                            borderColor: '#d97706',
+                            backgroundColor: 'rgba(217, 119, 6, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Consumption Rate (msg/s)',
+                            data: [2000, 2000, 2000, 3000, 3000, 3000, 3000], // Lag starts at 10:15
+                            borderColor: '#4b5563',
+                            borderDash: [5, 5],
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                             callbacks: {
+                                afterBody: function(context) {
+                                    const prod = context[0].parsed.y;
+                                    const cons = context[1].parsed.y;
+                                    const lag = prod - cons;
+                                    return lag > 0 ? `Lag Accumulating: ${lag} msg/s` : 'System Healthy';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function resolveLagScenario() {
+            const action = document.getElementById('lag-action').value;
+            const feedback = document.getElementById('lag-feedback');
+            
+            feedback.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800', 'bg-yellow-100', 'text-yellow-800');
+
+            if (action === 'none') {
+                feedback.classList.add('hidden');
+                return;
+            }
+
+            if (action === 'restart') {
+                feedback.textContent = "❌ Incorrect. Restarting might clear temporary issues, but if the produce rate (5k) > consume rate (3k), lag will return immediately.";
+                feedback.classList.add('bg-red-100', 'text-red-800');
+            } else if (action === 'add_consumer') {
+                feedback.textContent = "⚠️ Partially Correct. Adding a consumer helps ONLY if you have idle partitions. If # Consumers = # Partitions, this does nothing.";
+                feedback.classList.add('bg-yellow-100', 'text-yellow-800');
+            } else if (action === 'add_partition') {
+                feedback.textContent = "✅ Correct! To scale consumption, you must first increase Partitions, then add Consumers to match. This increases parallelism.";
+                feedback.classList.add('bg-green-100', 'text-green-800');
+                
+                // Update chart to show fix
+                lagChart.data.datasets[1].data = [2000, 2000, 2000, 3000, 3000, 4500, 5000];
+                lagChart.data.datasets[1].borderColor = '#16a34a'; // Green
+                lagChart.update();
+            }
+        }
+
+        // Initialize
+        window.onload = function() {
+            updateBrokerUI(1);
+            updateBrokerUI(2);
+            updateBrokerUI(3);
+            initCompactionChart();
+            initLagChart();
+        }
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kafka Interview Master Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .perspective-1000 { perspective: 1000px; }
+        .preserve-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
+        .card-transition { transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 px-6 py-4">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-amber-600 rounded flex items-center justify-center text-white font-bold italic">K</div>
+                <h1 class="text-xl font-bold tracking-tight">Kafka Interview Master Guide</h1>
+            </div>
+            <nav class="flex bg-slate-100 p-1 rounded-lg" id="nav-tabs">
+                <button onclick="showTab('use-cases')" id="btn-use-cases" class="tab-btn px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition bg-white shadow-sm text-amber-600">Use Cases</button>
+                <button onclick="showTab('design')" id="btn-design" class="tab-btn px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition text-slate-500 hover:text-slate-700">System Design</button>
+                <button onclick="showTab('flashcards')" id="btn-flashcards" class="tab-btn px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition text-slate-500 hover:text-slate-700">Flashcards</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-6">
+        
+        <!-- Tab: Use Cases -->
+        <section id="tab-use-cases" class="tab-content space-y-6">
+            <div class="bg-white p-8 rounded-2xl border border-slate-200 flex items-center justify-between shadow-sm">
+                <div>
+                    <h2 class="text-2xl font-bold mb-2">Real-World Scale</h2>
+                    <p class="text-slate-500">How industry leaders leverage Kafka for billion-scale events.</p>
+                </div>
+                <i data-lucide="globe" class="text-slate-200 w-12 h-12"></i>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- LinkedIn -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 hover:border-amber-500 transition">
+                    <h3 class="font-bold text-lg mb-2 text-amber-700">LinkedIn</h3>
+                    <p class="text-sm text-slate-600 leading-relaxed">The creators of Kafka. They solved the "N-squared" connectivity problem where every service had to talk to every other service. Now, they process over <b>7 trillion messages/day</b> through a unified event log.</p>
+                </div>
+                <!-- Netflix -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 hover:border-amber-500 transition">
+                    <h3 class="font-bold text-lg mb-2 text-amber-700">Netflix</h3>
+                    <p class="text-sm text-slate-600 leading-relaxed">Uses Kafka for real-time content recommendations. As you watch, events are streamed into Kafka and processed in sub-seconds to update your "Continue Watching" and suggested lists instantly.</p>
+                </div>
+                <!-- Uber -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 hover:border-amber-500 transition">
+                    <h3 class="font-bold text-lg mb-2 text-amber-700">Uber</h3>
+                    <p class="text-sm text-slate-600 leading-relaxed">Calculates dynamic "Surge Pricing" by processing GPS pings from millions of riders and drivers in real-time, matching supply and demand across city blocks with millisecond latency.</p>
+                </div>
+                <!-- Airbnb -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 hover:border-amber-500 transition">
+                    <h3 class="font-bold text-lg mb-2 text-amber-700">Airbnb</h3>
+                    <p class="text-sm text-slate-600 leading-relaxed">Implemented Change Data Capture (CDC). Any update to a house listing in the database is pushed to Kafka, which then triggers an immediate search index update in Elasticsearch.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab: System Design -->
+        <section id="tab-design" class="tab-content hidden space-y-8">
+            <div class="text-center max-w-2xl mx-auto">
+                <h2 class="text-3xl font-bold mb-3">System Design Masterclass</h2>
+                <p class="text-slate-500 italic text-sm">Advanced Scenarios for Senior Engineer Interviews</p>
+            </div>
+
+            <!-- Design Question 1 -->
+            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                <div class="bg-slate-900 p-4 flex items-center gap-3">
+                    <i data-lucide="shield-check" class="text-amber-500 w-5 h-5"></i>
+                    <h3 class="text-white font-bold text-sm uppercase tracking-wide">High Availability & Durability</h3>
+                </div>
+                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Interview Scenario</span>
+                        <p class="text-slate-800 font-medium">Design a system for a payment gateway that ensures zero data loss even if an entire Availability Zone (AZ) fails.</p>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <span class="text-[10px] font-bold text-amber-600 uppercase tracking-widest block mb-2">Architectural Fix</span>
+                        <p class="text-xs font-bold mb-1">Multi-AZ ISR Pattern</p>
+                        <p class="text-xs text-slate-600 mb-3">Set <code>replication.factor=3</code>, <code>min.insync.replicas=2</code>, and <code>acks=all</code>. Disable <code>unclean.leader.election</code>.</p>
+                        <div class="flex gap-2 pt-2 border-t border-slate-200">
+                            <i data-lucide="zap" class="text-amber-400 w-4 h-4"></i>
+                            <p class="text-[11px] text-slate-500 italic">"This ensures at least 2 copies exist across AZs before an ACK is sent back to the producer."</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Design Question 2 -->
+            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                <div class="bg-slate-900 p-4 flex items-center gap-3">
+                    <i data-lucide="layers" class="text-amber-500 w-5 h-5"></i>
+                    <h3 class="text-white font-bold text-sm uppercase tracking-wide">Handling Traffic Spikes (Parallelism)</h3>
+                </div>
+                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Interview Scenario</span>
+                        <p class="text-slate-800 font-medium">Your consumer lag is growing during a flash sale. You have 10 partitions and 10 consumers, but CPU is at 100%.</p>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <span class="text-[10px] font-bold text-amber-600 uppercase tracking-widest block mb-2">Architectural Fix</span>
+                        <p class="text-xs font-bold mb-1">Horizontal Partition Scaling</p>
+                        <p class="text-xs text-slate-600 mb-3">Scale partitions to 50 and add 40 more consumers. Use <code>StickyAssignor</code> to minimize rebalance impact.</p>
+                        <div class="flex gap-2 pt-2 border-t border-slate-200">
+                            <i data-lucide="zap" class="text-amber-400 w-4 h-4"></i>
+                            <p class="text-[11px] text-slate-500 italic">"Kafka consumption parallelism is limited by partition count. 1 Partition = Max 1 Consumer."</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab: Flashcards -->
+        <section id="tab-flashcards" class="tab-content hidden flex flex-col items-center justify-center min-h-[400px]">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-bold flex items-center justify-center gap-3">
+                    <i data-lucide="brain" class="text-amber-600"></i> Active Recall
+                </h2>
+                <p class="text-slate-500 text-sm mt-1">Tap the card to reveal the answer</p>
+            </div>
+
+            <div class="w-full max-w-md h-64 perspective-1000" onclick="flipCard()">
+                <div id="flashcard-inner" class="relative w-full h-full text-center card-transition preserve-3d cursor-pointer">
+                    <!-- Front -->
+                    <div class="absolute w-full h-full bg-white border-2 border-slate-200 rounded-3xl shadow-lg flex items-center justify-center p-8 backface-hidden">
+                        <p id="card-q" class="text-xl font-bold text-slate-800 leading-snug"></p>
+                    </div>
+                    <!-- Back -->
+                    <div class="absolute w-full h-full bg-amber-600 text-white border-2 border-amber-700 rounded-3xl shadow-lg flex items-center justify-center p-8 backface-hidden rotate-y-180">
+                        <p id="card-a" class="text-sm font-medium leading-relaxed"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-10 flex items-center gap-6">
+                <span id="card-counter" class="text-xs font-bold text-slate-400 tracking-widest">1 / 5</span>
+                <button onclick="nextCard()" class="flex items-center gap-2 bg-slate-900 text-white px-6 py-2 rounded-full font-bold text-sm hover:bg-amber-600 transition">
+                    Next Concept <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Data
+        const flashcards = [
+            { q: "What is 'Zero Copy' and why is it important?", a: "Kafka uses sendfile() to copy data directly from the disk buffer to the network buffer, bypassing the application heap. This avoids CPU-intensive context switching and memory copies." },
+            { q: "Explain the difference between 'acks=all' and 'min.insync.replicas'.", a: "acks=all is a producer setting to wait for all ISRs. min.insync.replicas is a broker setting defining how many ISRs must be alive to accept a message. If ISRs < min, the producer fails." },
+            { q: "How do you achieve 'Exactly-Once' Semantics (EOS)?", a: "By enabling the Idempotent Producer (config: enable.idempotence=true) and using the Transactional API to make offset commits and writes atomic." },
+            { q: "What is the role of the Controller?", a: "The Controller is a broker that manages partition leadership. It elects new leaders when brokers fail and syncs metadata across the cluster." },
+            { q: "How does a Consumer Group handle a rebalance?", a: "The Group Coordinator (broker) triggers a rebalance when a member leaves/joins. The Group Leader (consumer) then re-assigns partitions using a Strategy (Range, Sticky, etc.)." }
+        ];
+
+        let currentCardIdx = 0;
+        let isFlipped = false;
+
+        // Navigation
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+            if(tabId === 'flashcards') document.getElementById('tab-' + tabId).classList.add('flex');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-white', 'shadow-sm', 'text-amber-600');
+                btn.classList.add('text-slate-500');
+            });
+            const activeBtn = document.getElementById('btn-' + tabId);
+            activeBtn.classList.add('bg-white', 'shadow-sm', 'text-amber-600');
+            activeBtn.classList.remove('text-slate-500');
+        }
+
+        // Flashcards Logic
+        function updateCard() {
+            document.getElementById('card-q').innerText = flashcards[currentCardIdx].q;
+            document.getElementById('card-a').innerText = flashcards[currentCardIdx].a;
+            document.getElementById('card-counter').innerText = `${currentCardIdx + 1} / ${flashcards.length}`;
+        }
+
+        function flipCard() {
+            isFlipped = !isFlipped;
+            const inner = document.getElementById('flashcard-inner');
+            if(isFlipped) inner.classList.add('rotate-y-180');
+            else inner.classList.remove('rotate-y-180');
+        }
+
+        function nextCard() {
+            isFlipped = false;
+            document.getElementById('flashcard-inner').classList.remove('rotate-y-180');
+            setTimeout(() => {
+                currentCardIdx = (currentCardIdx + 1) % flashcards.length;
+                updateCard();
+            }, 150);
+        }
+
+        // Init
+        window.onload = () => {
+            lucide.createIcons();
+            updateCard();
+        };
+    </script>
+</body>
+</html>
