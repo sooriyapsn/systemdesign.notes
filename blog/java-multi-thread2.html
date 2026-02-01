@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Concurrency Interview Pro</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --bg: #f4f7f6;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: #333; line-height: 1.6; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        
+        /* Flashcard Styles */
+        .card-container { perspective: 1000px; width: 90%; max-width: 600px; height: 350px; margin: 20px 0; cursor: pointer; }
+        .card { position: relative; width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
+        .card.flipped { transform: rotateY(180deg); }
+        .front, .back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); box-sizing: border-box; text-align: center; }
+        .front { background: white; border: 2px solid var(--accent); }
+        .front h3 { color: var(--accent); margin-bottom: 10px; }
+        .back { background: var(--primary); color: white; transform: rotateY(180deg); overflow-y: auto; }
+        
+        /* Controls */
+        .controls { margin-bottom: 30px; }
+        button { padding: 12px 24px; font-size: 14px; font-weight: bold; cursor: pointer; border: none; border-radius: 8px; background: var(--primary); color: white; margin: 5px; transition: 0.3s; }
+        button:hover { background: var(--accent); transform: translateY(-2px); }
+        .counter { font-weight: bold; margin-bottom: 10px; color: var(--primary); }
+
+        /* Coding Section */
+        .code-block { background: #282c34; color: #abb2bf; padding: 20px; border-radius: 8px; width: 90%; max-width: 800px; overflow-x: auto; font-family: 'Courier New', monospace; font-size: 14px; margin-bottom: 40px; }
+        .keyword { color: #c678dd; }
+        .comment { color: #5c6370; font-style: italic; }
+        
+        .resource-list { width: 90%; max-width: 800px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        h2 { border-bottom: 2px solid var(--accent); padding-bottom: 10px; width: 100%; max-width: 800px; }
+    </style>
+</head>
+<body>
+
+    <h1>Java Concurrency Flashcards</h1>
+    <div class="counter" id="counter">Card 1 of 6</div>
+
+    <div class="card-container" onclick="this.querySelector('.card').classList.toggle('flipped')">
+        <div class="card" id="card">
+            <div class="front">
+                <h3 id="card-category">Category</h3>
+                <p id="card-q">Loading...</p>
+                <small style="color: #999; margin-top: 20px;">(Click to flip)</small>
+            </div>
+            <div class="back">
+                <h3>Solution</h3>
+                <p id="card-a">...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button onclick="prevCard()">← Previous</button>
+        <button onclick="shuffleCards()">Shuffle Deck</button>
+        <button onclick="nextCard()">Next →</button>
+    </div>
+
+    <h2>Advanced Coding: Deadlock-Free Transfer</h2>
+    <div class="code-block">
+<pre>
+<span class="comment">// Java 8-21: The Identity Hashcode Ordering Strategy</span>
+<span class="keyword">public void</span> safeTransfer(Account from, Account to, <span class="keyword">double</span> amount) {
+    <span class="keyword">int</span> fromHash = System.identityHashCode(from);
+    <span class="keyword">int</span> toHash = System.identityHashCode(to);
+
+    <span class="comment">// Enforce a global locking order to break Circular Wait</span>
+    Object lock1 = fromHash < toHash ? from : to;
+    Object lock2 = fromHash < toHash ? to : from;
+
+    <span class="keyword">synchronized</span> (lock1) {
+        <span class="keyword">synchronized</span> (lock2) {
+            <span class="keyword">if</span> (from.getBalance() >= amount) {
+                from.withdraw(amount);
+                to.deposit(amount);
+            }
+        }
+    }
+}
+</pre>
+    </div>
+
+    <h2>Deep-Dive Resources</h2>
+    <div class="resource-list">
+        <ul>
+            <li><strong><a href="https://jcip.net/" target="_blank">Java Concurrency in Practice</a></strong> - The foundational "Bible" for thread safety.</li>
+            <li><strong><a href="https://docs.oracle.com/en/java/javase/21/core/virtual-threads.html" target="_blank">Project Loom / Virtual Threads Official Guide</a></strong> - Must-read for Java 21+ interviews.</li>
+            <li><strong><a href="https://openjdk.org/jeps/453" target="_blank">JEP 453: Structured Concurrency</a></strong> - Learn how to manage subtasks as a single unit.</li>
+        </ul>
+    </div>
+
+    <script>
+        const cards = [
+            { cat: "Scenario", q: "The Thundering Herd: 5,000 threads hit a 100-connection DB. How do you throttle?", a: "Use a Semaphore(100) to limit concurrent access. In Java 21, Semaphores prevent Virtual Threads from overwhelming downstream systems without blocking OS threads." },
+            { cat: "Troubleshooting", q: "The 'Stuck' Virtual Thread: Why did performance drop after moving to Java 21?", a: "Likely 'Thread Pinning'. Look for 'synchronized' blocks doing I/O. Replace them with 'ReentrantLock' so the Virtual Thread can unmount from its carrier." },
+            { cat: "Design Pattern", q: "The 'Poison Pill': How to stop a Producer-Consumer gracefully?", a: "Insert a unique 'Poison' object into the queue. When the Consumer picks it up, it terminates its loop. Use a CountDownLatch if you have multiple consumers." },
+            { cat: "Java 21 Logic", q: "Partial Failure: 3 APIs are called; 1 fails. How do you cancel the others immediately?", a: "Use 'StructuredTaskScope.ShutdownOnFailure()'. It automates the cancellation of siblings the moment one subtask throws an exception." },
+            { cat: "Modern Java", q: "Scoped Values vs ThreadLocal: Why use ScopedValue in Java 21?", a: "ThreadLocal is memory-heavy and inherited by children. ScopedValue is immutable, has a defined lifetime, and is highly optimized for millions of Virtual Threads." },
+            { cat: "Architecture", q: "The Busy Spinner: A thread uses 100% CPU waiting for a flag. Fix?", a: "Replace the 'while(flag)' loop with 'lock.condition.await()' or 'CompletableFuture.thenAccept()'. This moves the thread to a WAITING state, consuming 0 CPU cycles." }
+        ];
+
+        let deck = [...cards];
+        let currentIndex = 0;
+
+        function updateDisplay() {
+            const cardElement = document.getElementById('card');
+            cardElement.classList.remove('flipped');
+            
+            setTimeout(() => {
+                document.getElementById('card-category').innerText = deck[currentIndex].cat;
+                document.getElementById('card-q').innerText = deck[currentIndex].q;
+                document.getElementById('card-a').innerText = deck[currentIndex].a;
+                document.getElementById('counter').innerText = `Card ${currentIndex + 1} of ${deck.length}`;
+            }, 150);
+        }
+
+        function nextCard() { currentIndex = (currentIndex + 1) % deck.length; updateDisplay(); }
+        function prevCard() { currentIndex = (currentIndex - 1 + deck.length) % deck.length; updateDisplay(); }
+        function shuffleCards() {
+            deck.sort(() => Math.random() - 0.5);
+            currentIndex = 0;
+            updateDisplay();
+        }
+
+        // Initialize first card
+        updateDisplay();
+    </script>
+</body>
+</html>
